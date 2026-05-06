@@ -143,7 +143,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # ── Static Files ───────────────────────────────────────────────────────────────
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 # WhiteNoise: serve compressed + hashed static files from STATIC_ROOT
 STORAGES = {
