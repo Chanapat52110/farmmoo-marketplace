@@ -173,11 +173,12 @@ export function DashboardScreen() {
   };
 
   const handleProductFormSubmit = async (payload: CreateProductPayload | UpdateProductPayload) => {
-    if (editingProduct !== null) {
+    if (editingProduct !== null && editingProduct > 0) {
+      // Edit existing product — editingProduct holds a real DB id
       await updateProductById(editingProduct, payload);
-      toast.success('อัพเดทสินค้าสำเร็จ');
       setEditingProduct(null);
     } else {
+      // Create new product — editingProduct is -1 (sentinel for "new")
       await addProduct(payload as CreateProductPayload);
     }
   };
