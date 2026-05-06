@@ -40,7 +40,7 @@ def _env_list(key: str, default: str = '') -> list[str]:
 
 SECRET_KEY = _env('SECRET_KEY', 'django-insecure-change-me-in-production')
 DEBUG = _env_bool('DEBUG', default=True)
-ALLOWED_HOSTS = _env_list('ALLOWED_HOSTS', '127.0.0.1,localhost')
+ALLOWED_HOSTS = ["*"]
 
 # ── Application ────────────────────────────────────────────────────────────────
 
