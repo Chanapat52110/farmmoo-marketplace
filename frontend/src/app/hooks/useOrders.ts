@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   listMyOrders,
   listShopOrders,
@@ -8,48 +10,37 @@ import {
 } from '../services/order.service';
 
 export function useMyOrders(token: string | null) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['orders', 'my', token],
+    queryFn: () => listMyOrders(token!),
+    enabled: !!token,
+    // Short staleTime: order status changes frequently
+    staleTime: 5_000,
+    // React Query handles background refetches without flipping isLoading to true,
+    // so the order list never flickers during the 5-second poll in OrdersScreen.
+    refetchInterval: 5_000,
+  });
 
-  const refresh = useCallback(async () => {
-    if (!token) return;
-    setError('');
-    setLoading(true);
-    try {
-      setOrders(await listMyOrders(token));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  return { orders, loading, error, refresh };
+  return {
+    orders: data ?? [],
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? 'โหลดข้อมูลไม่สำเร็จ' : '',
+    refresh: refetch,
+  };
 }
 
 export function useShopOrders(token: string | null) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const queryClient = useQueryClient();
   const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
+  const queryKey = ['orders', 'shop', token];
 
-  const refresh = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setError('');
-    try {
-      setOrders(await listShopOrders(token));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'โหลดข้อมูลไม่สำเร็จ');
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey,
+    queryFn: () => listShopOrders(token!),
+    enabled: !!token,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
+  });
 
   const updateStatus = useCallback(
     async (orderId: number, status: OrderStatus) => {
@@ -57,13 +48,27 @@ export function useShopOrders(token: string | null) {
       setUpdatingOrderId(orderId);
       try {
         const updated = await patchOrderStatus(token, orderId, status);
-        setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+        // Optimistic-style update: mutate the cache directly so the UI reflects
+        // the change immediately, then the next background refetch confirms it.
+        queryClient.setQueryData<Order[]>(queryKey, (old) =>
+          old ? old.map((o) => (o.id === updated.id ? updated : o)) : [updated],
+        );
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'อัปเดตสถานะไม่สำเร็จ');
       } finally {
         setUpdatingOrderId(null);
       }
     },
-    [token],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [token, queryClient],
   );
 
-  return { orders, loading, error, refresh, updateStatus, updatingOrderId };
+  return {
+    orders: data ?? [],
+    loading: isLoading,
+    error: error instanceof Error ? error.message : error ? 'โหลดข้อมูลไม่สำเร็จ' : '',
+    refresh: refetch,
+    updateStatus,
+    updatingOrderId,
+  };
 }

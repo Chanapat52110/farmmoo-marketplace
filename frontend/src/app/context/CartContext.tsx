@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 export interface CartItem {
   id: number;
@@ -8,6 +8,42 @@ export interface CartItem {
   image: string;
   farmName: string;
   unit: string;
+}
+
+// Bump CART_VERSION whenever CartItem shape changes to clear stale data on deploy.
+const CART_STORAGE_KEY = 'farmmoo_cart';
+const CART_VERSION = 1;
+
+interface PersistedCart {
+  version: number;
+  items: CartItem[];
+}
+
+function loadCartFromStorage(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as PersistedCart;
+    // Version mismatch → discard stale cart rather than crash
+    if (parsed.version !== CART_VERSION) {
+      localStorage.removeItem(CART_STORAGE_KEY);
+      return [];
+    }
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    // Corrupted JSON → start fresh
+    localStorage.removeItem(CART_STORAGE_KEY);
+    return [];
+  }
+}
+
+function saveCartToStorage(items: CartItem[]): void {
+  try {
+    const data: PersistedCart = { version: CART_VERSION, items };
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage quota exceeded — fail silently; in-memory cart still works
+  }
 }
 
 interface CartContextType {
@@ -23,7 +59,24 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  // Lazy initializer reads from localStorage once on mount — no second render.
+  const [items, setItems] = useState<CartItem[]>(() => loadCartFromStorage());
+
+  // Keep localStorage in sync whenever items change.
+  useEffect(() => {
+    saveCartToStorage(items);
+  }, [items]);
+
+  // Cross-tab sync: when another tab writes to CART_STORAGE_KEY, mirror the change here.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === CART_STORAGE_KEY) {
+        setItems(loadCartFromStorage());
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const addItem = useCallback((item: Omit<CartItem, 'quantity'>, qty: number) => {
     setItems(prev => {

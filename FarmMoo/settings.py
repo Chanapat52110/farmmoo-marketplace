@@ -186,6 +186,19 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ),
     'EXCEPTION_HANDLER': 'FarmMoo.exception_handler.custom_exception_handler',
+    # Scoped throttling — each scope maps to a rate in DEFAULT_THROTTLE_RATES.
+    # Applied per-view via throttle_classes on the action/viewset.
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        # Login: 10 attempts per minute per IP — generous enough for humans, tight for bots
+        'login': '10/minute',
+        # Register: 5 per minute per IP — prevents automated account creation
+        'register': '5/minute',
+        # Token refresh: 20 per minute — access tokens last 1h so this is very generous
+        'token_refresh': '20/minute',
+    },
 }
 
 # ── JWT ────────────────────────────────────────────────────────────────────────
@@ -208,6 +221,16 @@ CORS_ALLOW_CREDENTIALS = True
 
 # ── Security hardening (production only) ──────────────────────────────────────
 # These settings are intentionally off in DEBUG mode so local dev isn't affected.
+
+# ── Cache ─────────────────────────────────────────────────────────────────────
+# LocMemCache is per-process (no Redis needed). Works on single-dyno Render.
+# For multi-dyno setups, replace BACKEND with django_redis.cache.RedisCache.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'farmmoo-default',
+    }
+}
 
 if not DEBUG:
     SECURE_HSTS_SECONDS = 31_536_000        # 1 year

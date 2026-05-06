@@ -1,3 +1,5 @@
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -59,9 +61,40 @@ class ProductViewSet(viewsets.ViewSet):
             ordering = '-created_at'
         qs = qs.order_by(ordering)
 
-        return api_success(ProductSerializer(qs, many=True, context={'request': request}).data)
+        # Pagination — default 20 items per page, max 100.
+        try:
+            page_num = max(1, int(request.query_params.get('page', 1)))
+            page_size = min(max(1, int(request.query_params.get('page_size', 20))), 100)
+        except (ValueError, TypeError):
+            page_num = 1
+            page_size = 20
+
+        paginator = Paginator(qs, page_size)
+        page = paginator.get_page(page_num)
+
+        data = {
+            'count': paginator.count,
+            'total_pages': paginator.num_pages,
+            'page': page.number,
+            'page_size': page_size,
+            'has_next': page.has_next(),
+            'results': ProductSerializer(page.object_list, many=True, context={'request': request}).data,
+        }
+        response = api_success(data)
+        # Public, unfiltered list responses are safe to cache at the CDN/browser level.
+        # Filtered/searched responses are also cacheable per unique URL (Cloudflare, Vercel Edge).
+        response['Cache-Control'] = 'public, max-age=30, stale-while-revalidate=60'
+        return response
 
     def retrieve(self, request, pk=None):
+        # Serve from LocMemCache for 5 minutes to reduce DB hits on product detail pages.
+        # Cache key includes the pk only; image_url is built from the absolute URI which
+        # can vary by Host header, so we store the raw data and re-serialize on cache miss.
+        cache_key = f'product_detail:{pk}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return api_success(cached)
+
         try:
             product = Product.objects.select_related('shop', 'farm').get(pk=pk)
         except Product.DoesNotExist:
@@ -70,7 +103,12 @@ class ProductViewSet(viewsets.ViewSet):
         if product.status == Product.STATUS_DISCONTINUED:
             raise NotFound('ไม่พบสินค้า')
 
-        return api_success(ProductSerializer(product, context={'request': request}).data)
+        data = ProductSerializer(product, context={'request': request}).data
+        cache.set(cache_key, data, 300)  # 5 minutes
+
+        response = api_success(data)
+        response['Cache-Control'] = 'public, max-age=60, stale-while-revalidate=300'
+        return response
 
     def create(self, request):
         serializer = ProductCreateSerializer(data=request.data, context={'request': request})
@@ -93,6 +131,7 @@ class ProductViewSet(viewsets.ViewSet):
             raise NotFound('ไม่พบสินค้า หรือไม่ใช่สินค้าของคุณ')
 
         product.delete()
+        cache.delete(f'product_detail:{pk}')  # invalidate stale detail cache
         return api_success(None, status_code=status.HTTP_200_OK)
 
     def partial_update(self, request, pk=None):
@@ -117,6 +156,7 @@ class ProductViewSet(viewsets.ViewSet):
             elif product.status == Product.STATUS_OUT_OF_STOCK:
                 product.status = Product.STATUS_AVAILABLE
                 product.save(update_fields=['status'])
+        cache.delete(f'product_detail:{pk}')  # invalidate stale detail cache
         return api_success(ProductSerializer(product, context={'request': request}).data)
 
     @action(detail=False, methods=['get'])

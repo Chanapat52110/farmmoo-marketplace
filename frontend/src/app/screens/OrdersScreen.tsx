@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+﻿import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Package, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -17,14 +17,8 @@ export function OrdersScreen() {
     if (!accessToken) navigate('/login');
   }, [accessToken, navigate]);
 
-  // Poll every 5 seconds so customer sees live status updates
-  const refreshRef = useRef(refresh);
-  refreshRef.current = refresh;
-  useEffect(() => {
-    if (!accessToken) return;
-    const id = setInterval(() => { void refreshRef.current(); }, 5000);
-    return () => clearInterval(id);
-  }, [accessToken]);
+  // Polling is handled by useMyOrders (refetchInterval: 5_000).
+  // No manual setInterval needed here.
 
   return (
     <div className="min-h-screen pb-24 bg-gradient-to-b from-orange-50 to-stone-50">

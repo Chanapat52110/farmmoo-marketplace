@@ -3,6 +3,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -10,7 +11,26 @@ from FarmMoo.api_response import api_success
 from .api_serializers import RegisterSerializer, UserSerializer, ProfileUpdateSerializer
 
 
+# Scoped throttle classes — each reads its rate from settings.DEFAULT_THROTTLE_RATES[scope].
+# Using separate classes instead of setting throttle_scope on @action because
+# the views are mounted via as_view() directly (not via a Router), so action
+# kwargs are not forwarded automatically as initkwargs.
+
+class _LoginThrottle(ScopedRateThrottle):
+    scope = 'login'
+
+
+class _RegisterThrottle(ScopedRateThrottle):
+    scope = 'register'
+
+
+class _TokenRefreshThrottle(ScopedRateThrottle):
+    scope = 'token_refresh'
+
+
 class TokenRefreshEnvelopeView(TokenRefreshView):
+    throttle_classes = [_TokenRefreshThrottle]
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         return api_success(response.data, status_code=response.status_code)
@@ -31,6 +51,15 @@ class AuthViewSet(viewsets.ViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
+
+    def get_throttles(self):
+        # Per-action throttling. self.action is reliably set in initialize_request()
+        # which runs before check_throttles(), so this is safe.
+        if self.action == 'login':
+            return [_LoginThrottle()]
+        if self.action == 'register':
+            return [_RegisterThrottle()]
+        return super().get_throttles()
 
     @action(detail=False, methods=['post'])
     def register(self, request):

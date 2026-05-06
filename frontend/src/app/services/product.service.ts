@@ -29,19 +29,35 @@ export interface UpdateProductPayload {
   image?: File;
 }
 
+/** Paginated envelope returned by GET /products/ */
+export interface PaginatedProducts {
+  count: number;
+  total_pages: number;
+  page: number;
+  page_size: number;
+  has_next: boolean;
+  results: Product[];
+}
+
 export interface ProductListParams {
+  page?: number;
+  page_size?: number;
   search?: string;
   status?: string;
   ordering?: string;
+  shop?: number;
 }
 
-export function listProducts(params?: ProductListParams): Promise<Product[]> {
+export function listProducts(params?: ProductListParams): Promise<PaginatedProducts> {
   const qs = new URLSearchParams();
-  if (params?.search) qs.set('search', params.search);
-  if (params?.status) qs.set('status', params.status);
-  if (params?.ordering) qs.set('ordering', params.ordering);
+  if (params?.page)      qs.set('page', String(params.page));
+  if (params?.page_size) qs.set('page_size', String(params.page_size));
+  if (params?.search)    qs.set('search', params.search);
+  if (params?.status)    qs.set('status', params.status);
+  if (params?.ordering)  qs.set('ordering', params.ordering);
+  if (params?.shop)      qs.set('shop', String(params.shop));
   const query = qs.toString();
-  return apiRequest<Product[]>(`/products/${query ? `?${query}` : ''}`);
+  return apiRequest<PaginatedProducts>(`/products/${query ? `?${query}` : ''}`);
 }
 
 export function getProduct(id: number): Promise<Product> {

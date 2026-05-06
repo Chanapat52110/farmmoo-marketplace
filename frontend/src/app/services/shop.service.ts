@@ -1,5 +1,5 @@
 import { apiRequest, withAuth } from './http';
-import type { Product } from './product.service';
+import type { Product, PaginatedProducts } from './product.service';
 
 export interface Shop {
   id: number;
@@ -30,8 +30,10 @@ export function getShopById(id: number): Promise<Shop> {
   return apiRequest<Shop>(`/shops/${id}/`);
 }
 
-export function getShopProducts(shopId: number): Promise<Product[]> {
-  return apiRequest<Product[]>(`/products/?shop=${shopId}`);
+/** Returns a flat Product[] for a given shop (page_size=100 covers virtually any real shop). */
+export async function getShopProducts(shopId: number): Promise<Product[]> {
+  const result = await apiRequest<PaginatedProducts>(`/products/?shop=${shopId}&page_size=100`);
+  return result.results;
 }
 
 export function listShops(): Promise<Shop[]> {

@@ -17,8 +17,10 @@ export function useSellerProducts(token: string | null) {
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
     setError('');
+    // Do NOT call setLoading(true) here — this function is also called by the 15s
+    // poll and focus listener. Showing skeletons every 15s is jarring UX.
+    // Loading is set true only on the initial load (see useEffect below).
     try {
       setProducts(await listMyProducts(token));
     } catch (e) {
@@ -29,6 +31,7 @@ export function useSellerProducts(token: string | null) {
   }, [token]);
 
   useEffect(() => {
+    setLoading(true);  // show skeletons only on first load / token change
     void refresh();
   }, [refresh]);
 
