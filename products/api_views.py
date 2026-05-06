@@ -1,6 +1,7 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from FarmMoo.api_response import api_success
@@ -16,6 +17,8 @@ from .permissions import IsSeller
 
 
 class ProductViewSet(viewsets.ViewSet):
+    parser_classes = [MultiPartParser, FormParser]
+
     def get_permissions(self):
         if self.action in ('create', 'destroy', 'my_products', 'partial_update'):
             permission_classes = [IsAuthenticated, IsSeller]
