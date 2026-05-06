@@ -1,12 +1,8 @@
 // VITE_API_URL is set in .env.development / .env.production.
 // Falls back to localhost:8000 so plain `npm run dev` still works.
+// VITE_API_URL already includes /api, so all relative paths like /products/
+// will resolve to: {VITE_API_URL}/products/ = {base}/api/products/
 export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000/api';
-
-export interface ApiEnvelope<T> {
-  success: boolean;
-  data: T;
-  error?: unknown;
-}
 
 function extractErrorMessage(error: unknown): string {
   if (!error) return 'เกิดข้อผิดพลาด';
@@ -18,8 +14,15 @@ function extractErrorMessage(error: unknown): string {
 
   if (typeof error === 'object') {
     const obj = error as Record<string, unknown>;
+    // Django REST returns {detail: "error"} or {field: ["error"]}
     if (typeof obj.detail === 'string') return obj.detail;
-    const parts = Object.values(obj).map((v) => extractErrorMessage(v)).filter(Boolean);
+    if (typeof obj.detail === 'object' && Array.isArray((obj.detail as unknown))) {
+      return (obj.detail as string[]).join(', ');
+    }
+    // Collect all error messages from field errors
+    const parts = Object.values(obj)
+      .map((v) => extractErrorMessage(v))
+      .filter(Boolean);
     if (parts.length) return parts.join(', ');
   }
 
@@ -30,11 +33,12 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, options);
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, options);
 
-  let payload: ApiEnvelope<T> | null = null;
+  let payload: unknown = null;
   try {
-    payload = (await res.json()) as ApiEnvelope<T>;
+    payload = await res.json();
   } catch {
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
@@ -42,11 +46,11 @@ export async function apiRequest<T>(
     throw new Error('รูปแบบข้อมูลตอบกลับไม่ถูกต้อง');
   }
 
-  if (!res.ok || !payload.success) {
-    throw new Error(extractErrorMessage(payload.error));
+  if (!res.ok) {
+    throw new Error(extractErrorMessage(payload));
   }
 
-  return payload.data;
+  return payload as T;
 }
 
 export function withAuth(token: string, init: RequestInit = {}): RequestInit {
