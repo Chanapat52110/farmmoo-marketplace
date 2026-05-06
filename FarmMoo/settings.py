@@ -199,10 +199,11 @@ SIMPLE_JWT = {
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
 
-CORS_ALLOWED_ORIGINS = _env_list(
-    'CORS_ALLOWED_ORIGINS',
-    'http://localhost:5173,http://127.0.0.1:5173',
-)
+# Development: Allow localhost
+# Production: Set CORS_ALLOWED_ORIGINS env var with Vercel domain:
+#   CORS_ALLOWED_ORIGINS=https://farmmoo.vercel.app
+_cors_default = 'http://localhost:5173,http://127.0.0.1:5173'
+CORS_ALLOWED_ORIGINS = _env_list('CORS_ALLOWED_ORIGINS', _cors_default)
 CORS_ALLOW_CREDENTIALS = True
 
 # ── Security hardening (production only) ──────────────────────────────────────
