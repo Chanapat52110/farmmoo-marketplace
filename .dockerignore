@@ -1,0 +1,45 @@
+# Git / editor
+.git
+.gitignore
+*.md
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Dev database
+db.sqlite3
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets (never bake into image)
+.env
+.env.*
+!.env.example
+
+# Frontend dev artefacts
+frontend/node_modules/
+frontend/dist/
+
+# Django collected static (rebuilt during image build)
+staticfiles/
+
+# Media uploads (should be on S3 or mounted volume in prod)
+media/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test artefacts
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,0 +1,59 @@
+# .gitignore — FarmMoo project root
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyd
+*.pyo
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# ── Secrets — NEVER commit these ─────────────────────────────────────────────
+.env
+.env.prod
+.env.staging
+# Keep examples so contributors can onboard quickly
+!.env.example
+
+# ── Django ────────────────────────────────────────────────────────────────────
+db.sqlite3
+staticfiles/
+media/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Keep compose files, ignore local overrides
+docker-compose.override.yml
+
+# ── Node / Frontend ───────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+# Keep committed examples
+!frontend/.env.example
+!frontend/.env.development
+!frontend/.env.production
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/

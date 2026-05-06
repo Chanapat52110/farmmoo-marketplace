@@ -1,0 +1,106 @@
+/* ========================================
+   FARMOO DESIGN SYSTEM - THEME TOKENS
+   
+   Marketplace Visual Style:
+   - Warm, premium Thai marketplace feel
+   - Orange primary (#F97316)
+   - Stone grays for backgrounds
+   - Soft shadows and rounded corners
+   - Consistent spacing and typography
+   
+   NOTE: This file provides CSS variables for backward compatibility.
+   Primary styling uses Tailwind classes (orange-500, stone-800, etc).
+   The @theme block was removed (5/6/2026) - it was breaking Tailwind colors.
+   ======================================== */
+
+:root {
+  /* Brand Colors - mapped to Tailwind palette */
+  --color-orange-50: #FFF8F0;
+  --color-orange-100: #FFECDB;
+  --color-orange-300: #FDBA74;
+  --color-orange-500: #F97316;
+  --color-orange-600: #EA580C;
+  
+  --color-stone-50: #FAFAF9;
+  --color-stone-100: #F5F5F4;
+  --color-stone-200: #E7E5E4;
+  --color-stone-400: #A1A1AA;
+  --color-stone-600: #57534E;
+  --color-stone-700: #44403C;
+  --color-stone-800: #292524;
+  --color-stone-900: #1C1917;
+  
+  --color-green-50: #F0FDF4;
+  --color-green-600: #16A34A;
+  
+  --color-yellow-50: #FEFCE8;
+  
+  --color-red-50: #FEF2F2;
+  --color-red-600: #DC2626;
+  
+  /* Neutral Colors */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+  
+  /* Typography */
+  --font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Spacing */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+  
+  /* Border Radius */
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.12);
+}
+
+/* Global typography and defaults */
+@layer base {
+  html {
+    font-family: var(--font-family);
+    font-size: 16px;
+  }
+  
+  body {
+    font-family: var(--font-family);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Reset margins on paragraphs and headings */
+  p, h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+  }
+  
+  /* Remove default button styles */
+  button {
+    font-family: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
+}
+
+/* Remove default input styles */
+@layer base {
+  input, textarea, select {
+    font-family: inherit;
+  }
+}
