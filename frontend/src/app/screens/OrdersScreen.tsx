@@ -120,10 +120,13 @@ export function OrdersScreen() {
                 key={order.id}
                 id={order.id}
                 buyerName={order.buyer_username}
-                items={order.items.map((item) => ({
-                  name: item.product_name,
-                  qty: item.quantity,
-                }))}
+                items={Array.isArray(order.items)
+                  ? order.items.map((item) => ({
+                      name: item.product_name,
+                      qty: item.quantity,
+                    }))
+                  : (console.error('[OrdersScreen] order.items is not an array for order', order.id, order.items), [])
+                }
                 total={parseFloat(order.total_price)}
                 status={order.status}
                 date={new Date(order.created_at)}

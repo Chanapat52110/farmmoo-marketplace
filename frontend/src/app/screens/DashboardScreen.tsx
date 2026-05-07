@@ -102,23 +102,34 @@ export function DashboardScreen() {
   }, [user, authLoading, navigate]);
 
   // Analytics
-  const analytics = useMemo(
-    () => ({
-      totalProducts: products.length,
-      totalOrders: shopOrders.length,
-      pendingOrders: shopOrders.filter((o) =>
+  const analytics = useMemo(() => {
+    // Guard: both must be arrays before calling any array methods.
+    // If the API returns an unexpected shape (e.g. paginated envelope), these
+    // would otherwise crash inside useMemo as "s.filter is not a function".
+    if (!Array.isArray(products)) {
+      console.error('[DashboardScreen] products is not an array in analytics useMemo:', products);
+    }
+    if (!Array.isArray(shopOrders)) {
+      console.error('[DashboardScreen] shopOrders is not an array in analytics useMemo:', shopOrders);
+    }
+    const safeProducts = Array.isArray(products) ? products : [];
+    const safeOrders = Array.isArray(shopOrders) ? shopOrders : [];
+
+    return {
+      totalProducts: safeProducts.length,
+      totalOrders: safeOrders.length,
+      pendingOrders: safeOrders.filter((o) =>
         ['pending', 'paid', 'confirmed'].includes(o.status),
       ).length,
-      revenue: shopOrders
+      revenue: safeOrders
         .filter((o) => o.status !== 'cancelled')
-        .flatMap((o) => o.items)
+        .flatMap((o) => (Array.isArray(o.items) ? o.items : []))
         .reduce((s, i) => s + parseFloat(i.subtotal), 0),
       lowStockCount:
-        products.filter((p) => parseFloat(p.stock) === 0).length +
-        products.filter((p) => parseFloat(p.stock) > 0 && parseFloat(p.stock) <= 5).length,
-    }),
-    [products, shopOrders],
-  );
+        safeProducts.filter((p) => parseFloat(p.stock) === 0).length +
+        safeProducts.filter((p) => parseFloat(p.stock) > 0 && parseFloat(p.stock) <= 5).length,
+    };
+  }, [products, shopOrders]);
 
   const handleDeleteProduct = async (id: number) => {
     try {
@@ -207,10 +218,11 @@ export function DashboardScreen() {
     }
   };
 
-  const lowStockProducts = products.filter(
+  const safeProductsForFilter = Array.isArray(products) ? products : [];
+  const lowStockProducts = safeProductsForFilter.filter(
     (p) => parseFloat(p.stock) > 0 && parseFloat(p.stock) <= 5,
   );
-  const outOfStockProducts = products.filter((p) => parseFloat(p.stock) === 0);
+  const outOfStockProducts = safeProductsForFilter.filter((p) => parseFloat(p.stock) === 0);
 
   if (authLoading || !user) return null;
 

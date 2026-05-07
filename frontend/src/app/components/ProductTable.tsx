@@ -117,7 +117,9 @@ export function ProductTable({
                   {product.name}
                 </p>
                 <p className="text-stone-500 text-xs truncate">
-                  {product.description ? product.description.substring(0, 30) : 'ไม่มีรายละเอียด'}
+                  {typeof product.description === 'string' && product.description
+                    ? product.description.substring(0, 30)
+                    : 'ไม่มีรายละเอียด'}
                 </p>
               </div>
             </div>
