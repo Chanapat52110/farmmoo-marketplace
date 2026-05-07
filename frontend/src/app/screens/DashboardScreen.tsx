@@ -32,6 +32,10 @@ export function DashboardScreen() {
   const { user, accessToken, logout, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('overview');
+  // showProductForm: is the create/edit form visible?
+  // editingProduct: null = create mode, >0 = edit mode (real DB id)
+  // Never use -1 as a sentinel — that causes PATCH /products/-1/
+  const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<number | null>(null);
   const [orderStatusFilter, setOrderStatusFilter] = useState<OrderStatus | 'all'>('all');
 
@@ -169,17 +173,37 @@ export function DashboardScreen() {
   };
 
   const handleEditProduct = (product: Product) => {
-    setEditingProduct(product.id);
+    console.log('[ProductForm] Edit mode — product id:', product.id);
+    setEditingProduct(product.id); // real DB id > 0
+    setShowProductForm(true);
+  };
+
+  const handleOpenCreateForm = () => {
+    console.log('[ProductForm] Create mode — editingProduct set to null');
+    setEditingProduct(null); // null = create mode
+    setShowProductForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowProductForm(false);
+    setEditingProduct(null);
   };
 
   const handleProductFormSubmit = async (payload: CreateProductPayload | UpdateProductPayload) => {
     if (editingProduct !== null && editingProduct > 0) {
       // Edit existing product — editingProduct holds a real DB id
+      console.log('[ProductForm] Submitting PATCH for product id:', editingProduct);
       await updateProductById(editingProduct, payload);
-      setEditingProduct(null);
-    } else {
-      // Create new product — editingProduct is -1 (sentinel for "new")
+      handleCloseForm();
+    } else if (editingProduct === null) {
+      // Create new product — editingProduct is null (create mode)
+      console.log('[ProductForm] Submitting POST — create new product');
       await addProduct(payload as CreateProductPayload);
+      // form closes via onCancel in ProductForm after success
+    } else {
+      // Safety net: should never reach here (editingProduct <= 0 and not null)
+      console.error('[ProductForm] Invalid editingProduct value, aborting submit:', editingProduct);
+      handleCloseForm();
     }
   };
 
@@ -419,9 +443,9 @@ export function DashboardScreen() {
                 >
                   สินค้า ({products.length})
                 </h2>
-                {editingProduct === null && (
+                {!showProductForm && (
                   <button
-                    onClick={() => setEditingProduct(-1)}
+                    onClick={handleOpenCreateForm}
                     className="flex items-center gap-1.5 bg-orange-500 text-white px-3 sm:px-4 py-2 rounded-2xl hover:bg-orange-600 transition font-bold"
                     style={{ fontSize: 12 }}
                   >
@@ -432,7 +456,7 @@ export function DashboardScreen() {
               </div>
 
               <AnimatePresence>
-                {editingProduct !== null && (
+                {showProductForm && (
                   <motion.div
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -441,12 +465,14 @@ export function DashboardScreen() {
                   >
                     <ProductForm
                       product={
-                        editingProduct === -1
-                          ? null
-                          : products.find((p) => p.id === editingProduct) || null
+                        // editingProduct === null => create mode (pass null)
+                        // editingProduct > 0     => edit mode (find in list)
+                        editingProduct !== null
+                          ? products.find((p) => p.id === editingProduct) ?? null
+                          : null
                       }
                       onSubmit={handleProductFormSubmit}
-                      onCancel={() => setEditingProduct(null)}
+                      onCancel={handleCloseForm}
                     />
                   </motion.div>
                 )}
