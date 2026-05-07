@@ -38,9 +38,27 @@ def _env_list(key: str, default: str = '') -> list[str]:
 
 # ── Core ───────────────────────────────────────────────────────────────────────
 
-SECRET_KEY = _env('SECRET_KEY', 'django-insecure-change-me-in-production')
-DEBUG = _env_bool('DEBUG', default=True)
-ALLOWED_HOSTS = ["*"]
+from django.core.exceptions import ImproperlyConfigured
+
+DEBUG = _env_bool('DEBUG', default=False)
+
+SECRET_KEY = _env('SECRET_KEY')
+
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'dev-only-secret-key'
+    else:
+        raise ImproperlyConfigured(
+            'SECRET_KEY environment variable is required in production'
+        )
+
+ALLOWED_HOSTS = (
+    ["*"] if DEBUG
+    else _env_list(
+        'ALLOWED_HOSTS',
+        'farmmoo-marketplace.onrender.com'
+    )
+)
 
 # ── Application ────────────────────────────────────────────────────────────────
 
@@ -58,13 +76,11 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'cloudinary',
+    'cloudinary_storage',
 ]
-
-# django-storages only needed when S3 is active; avoids hard dependency in dev
-USE_S3 = _env_bool('USE_S3', default=False)
-if USE_S3:
-    INSTALLED_APPS.append('storages')
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -153,28 +169,20 @@ STORAGES = {
 }
 
 # ── Media Files / File Storage ─────────────────────────────────────────────────
-# USE_S3=True  → files uploaded to Amazon S3 (or compatible)
-# USE_S3=False → files saved to local MEDIA_ROOT (default for dev)
+# All uploaded media is stored on Cloudinary.
+# Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in env.
 
-if USE_S3:
-    AWS_ACCESS_KEY_ID = _env('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = _env('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = _env('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = _env('AWS_S3_REGION_NAME', 'ap-southeast-1')
-    AWS_DEFAULT_ACL = None              # inherit bucket policy (no public-read ACL)
-    AWS_S3_FILE_OVERWRITE = False       # preserve originals on name collision
-    AWS_QUERYSTRING_AUTH = False        # public media URLs (no signed expiry)
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-    _bucket = AWS_STORAGE_BUCKET_NAME
-    _region = AWS_S3_REGION_NAME
-    _custom_domain = _env('AWS_S3_CUSTOM_DOMAIN', f'{_bucket}.s3.{_region}.amazonaws.com')
-    STORAGES['default'] = {'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage'}
-    MEDIA_URL = f'https://{_custom_domain}/media/'
-    MEDIA_ROOT = ''
-else:
-    STORAGES['default'] = {'BACKEND': 'django.core.files.storage.FileSystemStorage'}
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': _env('CLOUDINARY_CLOUD_NAME'),
+    'API_KEY': _env('CLOUDINARY_API_KEY'),
+    'API_SECRET': _env('CLOUDINARY_API_SECRET'),
+}
+
+STORAGES['default'] = {
+    'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+}
+
+MEDIA_URL = '/media/'  # not used for Cloudinary URLs but required by Django
 
 # ── Django REST Framework ──────────────────────────────────────────────────────
 
@@ -207,6 +215,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
@@ -233,6 +242,8 @@ CACHES = {
 }
 
 if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
     SECURE_HSTS_SECONDS = 31_536_000        # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
