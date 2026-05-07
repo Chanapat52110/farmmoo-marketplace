@@ -227,6 +227,10 @@ SIMPLE_JWT = {
 _cors_default = 'http://localhost:5173,http://127.0.0.1:5173'
 CORS_ALLOWED_ORIGINS = _env_list('CORS_ALLOWED_ORIGINS', _cors_default)
 CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = _env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://moomarketplace.vercel.app',
+)
 
 # ── Security hardening (production only) ──────────────────────────────────────
 # These settings are intentionally off in DEBUG mode so local dev isn't affected.
