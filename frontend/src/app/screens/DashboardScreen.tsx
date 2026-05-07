@@ -372,7 +372,7 @@ export function DashboardScreen() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {shopOrders.slice(0, 3).map((order) => (
+                    {(Array.isArray(shopOrders) ? shopOrders : []).slice(0, 3).map((order) => (
                       <button
                         key={order.id}
                         onClick={() => navigate(`/orders/${order.id}`)}

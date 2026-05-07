@@ -15,13 +15,28 @@ export function HomeScreen() {
 
   useEffect(() => {
     listShops()
-      .then(setShops)
+      .then((data) => {
+        if (!Array.isArray(data)) {
+          console.error('[HomeScreen] listShops() returned non-array:', data);
+          return;
+        }
+        setShops(data);
+      })
+      .catch((err: unknown) => {
+        console.error('[HomeScreen] listShops() failed:', err);
+      })
       .finally(() => setShopsLoading(false));
   }, []);
 
   const [addingId, setAddingId] = useState<number | null>(null);
 
-  const newest = useMemo(() => products.slice(0, 6), [products]);
+  const newest = useMemo(() => {
+    if (!Array.isArray(products)) {
+      console.error('[HomeScreen] products is not an array:', products);
+      return [];
+    }
+    return products.slice(0, 6);
+  }, [products]);
 
   const handleAddCart = (id: number) => {
     setAddingId(id);
@@ -236,7 +251,7 @@ export function HomeScreen() {
 
           {!shopsLoading && shops.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {shops.slice(0, 4).map((shop, idx) => (
+              {(Array.isArray(shops) ? shops : []).slice(0, 4).map((shop, idx) => (
                 <motion.button
                   key={shop.id}
                   initial={{ opacity: 0, scale: 0.9 }}
